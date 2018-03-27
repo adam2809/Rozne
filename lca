@@ -3,72 +3,83 @@ package pl.Adam;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
+import java.util.Stack;
 
 public class Main {
     private static int[][] lca;
-    private static boolean[] visited;
     private static int currIn=0;
 
     public static void main(String[] args) {
-        
-        
-        Graph startingGraph=importGraph();
-        int n=startingGraph.getNodeCount();
+        HashMap<Integer,ArrayList<Integer>>neighbors=importGraph();
+        int n=neighbors.size();
         lca = new int[2][n];
-        visited = new boolean[n];
-        
-        DFS(0);
-        restetVisited();
-        for (int i = 0; i < n; i++) {
-            System.out.println(i+"\t"+lca[0][i]+"\t"+lca[1][i]);
-        }
-        System.out.println();
-        System.out.println(findCommonSubtreeRoot(8,7));
+        int currIn=0;
+        System.out.println(createSpanningTreeFromGraph(neighbors));
     }
-
-    private static void DFS(int node) {
+    private static HashMap<Integer,ArrayList<Integer>> createSpanningTreeFromGraph(HashMap<Integer,ArrayList<Integer>>graph){
+        boolean[] connected=new boolean[graph.size()];
+        HashMap<Integer,ArrayList<Integer>>spanningTree=new HashMap<Integer,ArrayList<Integer>>();
+        Stack<Integer>stack=new Stack<Integer>();
+        stack.push(0);
+        int toAdd=graph.size()-1;
+        
+        while(!stack.isEmpty()){
+            int currNode=stack.pop();
+            ArrayList<Integer> currNeighbors=graph.get(currNode);
+            for(int i=0;i<currNeighbors.size();i++){
+                if(connected[currNeighbors.get(i)]){
+                    continue;
+                }
+                stack.push(currNeighbors.get(i));
+                if(spanningTree.get(currNode)==null){
+                    spanningTree.put(currNode,new ArrayList<Integer>());
+                }
+                //TODO connection is added only to one of the nodes being connected
+                spanningTree.get(currNode).add(currNeighbors.get(i));
+                connected[currNeighbors.get(i)]=true;
+            }
+        }
+        return spanningTree;
+    }
+    private static void lowestCommonAncestor(int node,HashMap<Integer,ArrayList<Integer>>neighbors,boolean[] visited) {
         if (visited[node]){
             return;
         }
+        System.out.println("Pre-order:\t"+node+"\t"+currIn);
         visited[node]=true;
-        ArrayList<Integer> currNeighbors=sasiedzi.get(node);
+        ArrayList<Integer> currNeighbors=neighbors.get(node);
         lca[0][node]=currIn;
         currIn++;
 
         for (int i = 0; i < currNeighbors.size(); i++) {
-            DFS(currNeighbors.get(i));
+            lowestCommonAncestor(currNeighbors.get(i),neighbors,visited);
         }
+        System.out.println("Post-order:\t"+node+"\t"+currIn);
         lca[1][node]=currIn;
         currIn++;
     }
-    private static int findCommonSubtreeRoot(int nodeStart,int nodeDestination){
-        System.out.println(nodeStart);
-        System.out.println(lca[0][nodeStart]+"\t"+lca[1][nodeStart]+"\n");
+    private static int findCommonSubtreeRoot(int nodeStart,int nodeDestination,boolean visited[],
+    HashMap<Integer,ArrayList<Integer>>neighbors){
 		if(lca[0][nodeStart]<lca[0][nodeDestination]&&lca[1][nodeStart]>lca[1][nodeDestination]||
 		nodeStart==nodeDestination){
 		    return nodeStart;
 		}
 		visited[nodeStart]=true;
-		ArrayList<Integer> currNeighbors=sasiedzi.get(nodeStart);
+		ArrayList<Integer> currNeighbors=neighbors.get(nodeStart);
 		for(int i=0;i<currNeighbors.size();i++){
 		    if(visited[currNeighbors.get(i)]){
 		        continue;
 		    }
-		    int result=findCommonSubtreeRoot(currNeighbors.get(i),nodeDestination);
+		    int result=findCommonSubtreeRoot(currNeighbors.get(i),nodeDestination,visited,neighbors);
 		    if(result!=-1){
 		        return result;
 		    }
 		}
 		return -1;
     }
-    private static void restetVisited(){
-        for(int i=0;i<visited.length;i++){
-            visited[i]=false;
-        }
-    }
-    private static Graph importGraph(){
+    private static HashMap<Integer, ArrayList<Integer>> importGraph(){
         Scanner s = new Scanner(System.in);
-        HashMap<Integer, ArrayList<Integer>> sasiedzi=new HashMap<Integer, ArrayList<Integer>>();
+        HashMap<Integer, ArrayList<Integer>> neighbors=new HashMap<Integer, ArrayList<Integer>>();
         
         int n = s.nextInt();
         int m = s.nextInt();
@@ -77,65 +88,15 @@ public class Main {
             int a = s.nextInt();
             int b = s.nextInt();
 
-            if (sasiedzi.get(a) == null) {
-                sasiedzi.put(a, new ArrayList<Integer>());
+            if (neighbors.get(a) == null) {
+                neighbors.put(a, new ArrayList<Integer>());
             }
-            if (sasiedzi.get(b) == null) {
-                sasiedzi.put(b, new ArrayList<Integer>());
+            if (neighbors.get(b) == null) {
+                neighbors.put(b, new ArrayList<Integer>());
             }
-            sasiedzi.get(a).add(b);
-            sasiedzi.get(b).add(a);
+            neighbors.get(a).add(b);
+            neighbors.get(b).add(a);
         }
-        return new Graph(sasiedzi,n,m);
-    }
-    private class SpanningTree{
-        private TreeNode root;
-        private int nodeCount;
-        public SpanningTree(TreeNode root,int nodeCount){
-            this.root=root;
-            this.nodeCount=nodeCount;
-        }
-        public TreeNode getRoot(){
-            return root;
-        }
-        public int getNodeCount(){
-            return nodeCount;
-        }
-        public int getEdgeCount(){
-            return nodeCount-1;
-        }
-    }
-    private class Graph{
-        public HashMap<Integer, ArrayList<Integer>> neighbors;
-        private int nodeCount;
-        private int edgeCount;
-        
-        public Graph(HashMap<Integer, ArrayList<Integer>> neighbors,int nodeCount,int edgeCount){
-            this.neighbors=neighbors;
-            this.nodeCount=nodeCount;
-            this.edgeCount=edgeCount;
-        }
-        public int getNodeCount(){
-            return nodeCount;
-        }
-        public int getEdgeCount(){
-            return nodeCount-1;
-        }
-    }
-    private class TreeNode{
-        private TreeNode parent;
-        private TreeNode[] children;
-        private int value;
-        public TreeNode(int value,TreeNode parent,TreeNode[]children){
-            this.value=value;
-            this.parent=parent;
-            this.children=children;
-        }
-        public TreeNode getParent(){
-            return parent;
-        }
-        public int getValue(){
-            return value;
-        }
+        return neighbors;
     }
 }
