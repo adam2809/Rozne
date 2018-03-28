@@ -1,89 +1,111 @@
-package pl.Adam;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
 import java.util.Stack;
 
-public class Main {
+public class ShortestPathGraphToSpanningTree {
     private static int[][] lca;
-    private static int currIn=0;
+    private static int currIn = 0;
 
     public static void main(String[] args) {
-        HashMap<Integer,ArrayList<Integer>>neighbors=importGraph();
-        int n=neighbors.size();
-        lca = new int[2][n];
-        int currIn=0;
-        System.out.println(createSpanningTreeFromGraph(neighbors));
+        HashMap<Integer, ArrayList<Integer>> neighbors = importGraph();
+        int nodeCount = neighbors.size();
+        lca = new int[2][nodeCount];
+
+        lowestCommonAncestor(0, createSpanningTreeFromGraph(neighbors, false), new boolean[nodeCount]);
+        HashMap<Integer, ArrayList<Integer>> directionalSpanningTree = createSpanningTreeFromGraph(neighbors, true);
+        Scanner scannner = new Scanner(System.in);
+        int queryCount = scannner.nextInt();
+        for (int i = 0; i < queryCount; i++) {
+            int start = scannner.nextInt();
+            int destination = scannner.nextInt();
+            if (start == destination) {
+                System.out.println(new ArrayList<Integer>().add(start));
+                continue;
+            }
+
+            ArrayList<Integer> pathPart1 = findPathToCommonSubtreeRoot(start, destination, directionalSpanningTree);
+            ArrayList<Integer> pathPart2 = findPathToCommonSubtreeRoot(destination, start, directionalSpanningTree);
+            pathPart2.remove(pathPart2.size() - 1);
+            for (int j = pathPart2.size() - 1; j >= 0; j--) {
+                pathPart1.add(pathPart2.get(j));
+            }
+            System.out.println(pathPart1);
+        }
     }
-    private static HashMap<Integer,ArrayList<Integer>> createSpanningTreeFromGraph(HashMap<Integer,ArrayList<Integer>>graph){
-        boolean[] connected=new boolean[graph.size()];
-        HashMap<Integer,ArrayList<Integer>>spanningTree=new HashMap<Integer,ArrayList<Integer>>();
-        Stack<Integer>stack=new Stack<Integer>();
+
+    private static HashMap<Integer, ArrayList<Integer>> createSpanningTreeFromGraph(HashMap<Integer, ArrayList<Integer>> graph, boolean directional) {
+        boolean[] connected = new boolean[graph.size()];
+        connected[0] = true;
+        HashMap<Integer, ArrayList<Integer>> spanningTree = new HashMap<Integer, ArrayList<Integer>>();
+        Stack<Integer> stack = new Stack<Integer>();
         stack.push(0);
-        int toAdd=graph.size()-1;
-        
-        while(!stack.isEmpty()){
-            int currNode=stack.pop();
-            ArrayList<Integer> currNeighbors=graph.get(currNode);
-            for(int i=0;i<currNeighbors.size();i++){
-                if(connected[currNeighbors.get(i)]){
+        int toAdd = graph.size() - 1;
+
+        while (!stack.isEmpty()) {
+            int currNode = stack.pop();
+            ArrayList<Integer> currNeighbors = graph.get(currNode);
+            for (int i = 0; i < currNeighbors.size(); i++) {
+                if (connected[currNeighbors.get(i)]) {
                     continue;
                 }
                 stack.push(currNeighbors.get(i));
-                if(spanningTree.get(currNode)==null){
-                    spanningTree.put(currNode,new ArrayList<Integer>());
+                if (spanningTree.get(currNeighbors.get(i)) == null) {
+                    spanningTree.put(currNeighbors.get(i), new ArrayList<Integer>());
                 }
-                //TODO connection is added only to one of the nodes being connected
-                spanningTree.get(currNode).add(currNeighbors.get(i));
-                connected[currNeighbors.get(i)]=true;
+                spanningTree.get(currNeighbors.get(i)).add(currNode);
+
+                if (!directional) {
+                    if (spanningTree.get(currNode) == null) {
+                        spanningTree.put(currNode, new ArrayList<Integer>());
+                    }
+                    spanningTree.get(currNode).add(currNeighbors.get(i));
+                }
+                connected[currNeighbors.get(i)] = true;
             }
+        }
+        if (directional) {
+            spanningTree.put(0, new ArrayList<Integer>());
         }
         return spanningTree;
     }
-    private static void lowestCommonAncestor(int node,HashMap<Integer,ArrayList<Integer>>neighbors,boolean[] visited) {
-        if (visited[node]){
+
+    private static void lowestCommonAncestor(int node, HashMap<Integer, ArrayList<Integer>> neighbors, boolean[] visited) {
+        if (visited[node]) {
             return;
         }
-        System.out.println("Pre-order:\t"+node+"\t"+currIn);
-        visited[node]=true;
-        ArrayList<Integer> currNeighbors=neighbors.get(node);
-        lca[0][node]=currIn;
+        visited[node] = true;
+        ArrayList<Integer> currNeighbors = neighbors.get(node);
+        lca[0][node] = currIn;
         currIn++;
 
         for (int i = 0; i < currNeighbors.size(); i++) {
-            lowestCommonAncestor(currNeighbors.get(i),neighbors,visited);
+            lowestCommonAncestor(currNeighbors.get(i), neighbors, visited);
         }
-        System.out.println("Post-order:\t"+node+"\t"+currIn);
-        lca[1][node]=currIn;
+        lca[1][node] = currIn;
         currIn++;
     }
-    private static int findCommonSubtreeRoot(int nodeStart,int nodeDestination,boolean visited[],
-    HashMap<Integer,ArrayList<Integer>>neighbors){
-		if(lca[0][nodeStart]<lca[0][nodeDestination]&&lca[1][nodeStart]>lca[1][nodeDestination]||
-		nodeStart==nodeDestination){
-		    return nodeStart;
-		}
-		visited[nodeStart]=true;
-		ArrayList<Integer> currNeighbors=neighbors.get(nodeStart);
-		for(int i=0;i<currNeighbors.size();i++){
-		    if(visited[currNeighbors.get(i)]){
-		        continue;
-		    }
-		    int result=findCommonSubtreeRoot(currNeighbors.get(i),nodeDestination,visited,neighbors);
-		    if(result!=-1){
-		        return result;
-		    }
-		}
-		return -1;
+
+    private static ArrayList<Integer> findPathToCommonSubtreeRoot(int currNode, int nodeDestination,
+                                                                  HashMap<Integer, ArrayList<Integer>> directionalSpanningTree) {
+        ArrayList<Integer> path = new ArrayList<>();
+        path.add(currNode);
+        while (!((lca[0][currNode] < lca[0][nodeDestination] && lca[1][currNode] > lca[1][nodeDestination]) ||
+                currNode == nodeDestination)) {
+            currNode = directionalSpanningTree.get(currNode).get(0);
+            path.add(currNode);
+        }
+        return path;
     }
-    private static HashMap<Integer, ArrayList<Integer>> importGraph(){
+
+
+    private static HashMap<Integer, ArrayList<Integer>> importGraph() {
         Scanner s = new Scanner(System.in);
-        HashMap<Integer, ArrayList<Integer>> neighbors=new HashMap<Integer, ArrayList<Integer>>();
-        
+        HashMap<Integer, ArrayList<Integer>> neighbors = new HashMap<Integer, ArrayList<Integer>>();
+
         int n = s.nextInt();
         int m = s.nextInt();
-        
+
         for (int i = 0; i < m; i++) {
             int a = s.nextInt();
             int b = s.nextInt();
